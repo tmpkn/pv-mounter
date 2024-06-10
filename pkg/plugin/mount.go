@@ -22,6 +22,8 @@ const (
 	DefaultUserGroup          int64 = 2137
 	DefaultSSHPort            int   = 2137
 	ProxySSHPort              int   = 6666
+	secretName                      = "ssh-private-key"
+	configMapName                   = "ssh-public-key"
 )
 
 func Mount(namespace, pvcName, localMountPoint string) error {
@@ -52,6 +54,20 @@ func Mount(namespace, pvcName, localMountPoint string) error {
 		fmt.Printf("Error generating key pair: %v\n", err)
 		return err
 	}
+
+	err = createSecret(clientset, namespace, secretName, privateKey)
+	if err != nil {
+		fmt.Printf("Error creating secret: %v\n", err)
+		return err
+	}
+
+	err = createConfigMap(clientset, namespace, configMapName, publicKey)
+	if err != nil {
+		fmt.Printf("Error creating configmap: %v\n", err)
+		return err
+	}
+
+	fmt.Println("Secret and ConfigMap created successfully.")
 
 	if canMount {
 		return handleMount(clientset, namespace, pvcName, localMountPoint, privateKey, publicKey)

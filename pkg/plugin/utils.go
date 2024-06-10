@@ -6,8 +6,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 
+	"context"
 	"fmt"
 	"golang.org/x/crypto/ssh"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"math/rand"
@@ -92,4 +95,41 @@ func checkSSHFS() {
 		}
 		os.Exit(1)
 	}
+}
+
+func createSecret(clientset *kubernetes.Clientset, namespace, name, privateKey string) error {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			"private-key": []byte(privateKey),
+		},
+		Type: corev1.SecretTypeOpaque,
+	}
+
+	_, err := clientset.CoreV1().Secrets(namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create secret: %v", err)
+	}
+	return nil
+}
+
+func createConfigMap(clientset *kubernetes.Clientset, namespace, name, publicKey string) error {
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: map[string]string{
+			"public-key": publicKey,
+		},
+	}
+
+	_, err := clientset.CoreV1().ConfigMaps(namespace).Create(context.TODO(), configMap, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create configmap: %v", err)
+	}
+	return nil
 }
